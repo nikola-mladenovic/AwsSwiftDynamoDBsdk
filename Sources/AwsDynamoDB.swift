@@ -138,6 +138,7 @@ public class AwsDynamoDB {
     }
     
     private func toAwsJsonValue(from value: Any) -> [String : Any]? {
+        let value = "\(Mirror(reflecting: value).subjectType)" == "__NSCFBoolean" ? value as! Bool : value
         switch value {
         case is String:
             return ["S" : value]
