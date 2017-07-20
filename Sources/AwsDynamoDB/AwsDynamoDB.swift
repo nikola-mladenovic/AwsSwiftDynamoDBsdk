@@ -31,7 +31,6 @@ public class AwsDynamoDB {
     ///   - session: Optional parameter, specifying a `URLSession` to be used for all DynamoDB related requests. If not provided, `URLSession(configuration: .default)` will be used.
     ///   - accessKeyId: The access key for using the DynamoDB.
     ///   - secretAccessKey: The secret access key for using the DynamoDB.
-
     public init(host: String, session: URLSession = URLSession(configuration: .default), accessKeyId: String, secretAccessKey: String) {
         self.host = host.hasSuffix("/") ? host.substring(to: host.characters.index(host.endIndex, offsetBy: -1)) : host
         self.session = session
@@ -85,13 +84,13 @@ public class AwsDynamoDB {
         dataTask.resume()
     }
     
-    /// Method used for deleteting items from table.
+    /// Method used for deleting the items from table.
     ///
     /// - Parameters:
-    ///   - tableName: Name of table.
+    ///   - tableName: The name of the table.
     ///   - key: Tuple that represents primary key, e.g `(field: "id", "012345")`
     ///   - completion: Completion closure that will be called when request has completed.
-    ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
+    ///   - success: Bool value that will be `true` if request has succeeded, otherwise `false`.
     ///   - error: Error if request has failed or `nil` if request has succeeded.
     public func deleteItem(tableName: String, key: (field :String, value: Any), completion: @escaping (_ success: Bool, _ error: Error?) -> Void) {
         let params: [String : Any] = [ "TableName" : tableName,
@@ -112,10 +111,10 @@ public class AwsDynamoDB {
         dataTask.resume()
     }
     
-    /// Method used for fetching items from table.
+    /// Method used for fetching the items from table.
     ///
     /// - Parameters:
-    ///   - tableName: Name of table.
+    ///   - tableName: The name of the table.
     ///   - item: Item to put, must conform to `Codable` protocol.
     ///   - completion: Completion closure that will be called when request has completed.
     ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
@@ -138,16 +137,16 @@ public class AwsDynamoDB {
         dataTask.resume()
     }
     
-    /// Method used to execute query on given table.
+    /// Method used to execute query on a given table.
     /// For more information, see [Amazon DynamoDB API Documentation.](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Operations.html)
     ///
     /// - Parameters:
-    ///   - tableName: Name of table.
-    ///   - keyConditionExpression: The condition that specifies the key value for items to be retrieved by the query exection.
+    ///   - tableName: The name of the table.
+    ///   - keyConditionExpression: The condition that specifies the key value for items to be retrieved by the query execution.
     ///   - expressionAttributeNames: Substitution tokens for attribute names in an key condition expression.
     ///   - expressionAttributeValues: Values that can be substituted in an key condition expression.
     ///   - fetchAttributes: Array that represents attributes that should be returned from item. Defaults to empty array.
-    ///   - startKey: Tuple that represents primary key, e.g `(field: "id", "012345")`. If start key is specified, query will start from item with that key. Defaults to nil.
+    ///   - startKey: Tuple that represents primary key, e.g `(field: "id", "012345")`. If start key is specified, query will start from item with that key. Defaults to `nil`.
     ///   - filterExpression: A string that contains conditions that DynamoDB applies after the query operation, but before the items are returned to you. Items that do not satisfy criteria are not returned.
     ///   - limit: Limit number of items returned by query. Defaults to nil.
     ///   - consistentRead: If your application requires a strongly consistent read, set this parameter to 'true'. Defaults to `false`.
@@ -329,7 +328,7 @@ public class AwsDynamoDB {
         urlRequest.httpMethod = "POST"
         urlRequest.addValue("application/x-amz-json-1.0", forHTTPHeaderField: "Content-Type")
         urlRequest.addValue(type.target, forHTTPHeaderField: "X-Amz-Target")
-        urlRequest.httpBody = try! JSONSerialization.data(withJSONObject: jsonParams, options: [])
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: jsonParams, options: [])
         
         try urlRequest.sign(accessKeyId: accessKeyId, secretAccessKey: secretAccessKey)
         

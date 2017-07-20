@@ -9,4 +9,3 @@ let package = Package(
     targets: [.target(name: "AwsDynamoDB", dependencies: ["AwsSign"]),
               .testTarget(name: "AwsDynamoDBTests", dependencies: ["AwsDynamoDB"])]
 )
-
