@@ -3,6 +3,9 @@
 AwsDynamoDB is a Swift library that enables you to use Amazon DynamoDB  with Swift. More details on this are available from the [AWS DynamoDB docmentation](https://aws.amazon.com/documentation/dynamodb/).
 
 <p>
+<a href="https://travis-ci.org/nikola-mladenovic/AwsSwiftDynamoDBsdk" target="_blank">
+<img src="https://travis-ci.org/nikola-mladenovic/AwsSwiftDynamoDBsdk.svg?branch=master">
+</a>
 <a href="https://developer.apple.com/swift/" target="_blank">
 <img src="https://img.shields.io/badge/Swift-4.0-orange.svg?style=flat" alt="Swift 4.0">
 </a>

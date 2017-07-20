@@ -9,8 +9,8 @@ struct Item: Codable {
 }
 
 class AwsDynamoDBTest: XCTestCase {
-    static let key = ""
-    static let secret = ""
+    static let key = ProcessInfo.processInfo.environment["AWS_KEY"]!
+    static let secret = ProcessInfo.processInfo.environment["AWS_SECRET"]!
     static let host = "https://dynamodb.us-west-2.amazonaws.com"
     
     var dynamoDb: AwsDynamoDB?
