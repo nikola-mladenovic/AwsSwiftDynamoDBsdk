@@ -11,7 +11,7 @@ struct Item: Codable {
 class AwsDynamoDBTest: XCTestCase {
     static let key = ""
     static let secret = ""
-    static let host = ""
+    static let host = "https://dynamodb.us-west-2.amazonaws.com"
     
     var dynamoDb: AwsDynamoDB?
     
