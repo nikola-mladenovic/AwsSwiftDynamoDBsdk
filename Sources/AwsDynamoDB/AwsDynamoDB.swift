@@ -366,13 +366,24 @@ public struct AwsDynamoDBTable {
             return error
         }
         
-        if (response as? HTTPURLResponse)?.statusCode ?? 999 > 299 {
-            if let data = data,
-                let text = String(data: data, encoding: .utf8) {
+        if let httpResponse = response as? HTTPURLResponse,
+            httpResponse.statusCode > 299 {
+            guard let data = data else { return AwsDynamoDBError.generalError(reason: nil) }
+            
+            if let json = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String : Any],
+                let type = json["__type"] as? String {
+                if type.contains("ProvisionedThroughputExceededException") {
+                    return AwsDynamoDBError.provisionedThroughputExceeded
+                } else if type.contains("ThrottlingException") {
+                    return AwsDynamoDBError.throttlingException
+                } else {
+                    return AwsDynamoDBError.generalError(reason: json["message"] as? String)
+                }
+            } else if let text = String(data: data, encoding: .utf8) {
                 return AwsDynamoDBError.generalError(reason: text)
-            } else {
-                return AwsDynamoDBError.generalError(reason: nil)
             }
+            
+            return AwsDynamoDBError.generalError(reason: nil)
         }
         
         return nil
@@ -382,13 +393,19 @@ public struct AwsDynamoDBTable {
 
 public enum AwsDynamoDBError: Error {
     case generalError(reason: String?)
+    case provisionedThroughputExceeded
+    case throttlingException
 }
 
 extension AwsDynamoDBError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .generalError(let reason):
-            return "AWS DYNAMODB SDK error \(reason ?? "No failure reason available")"
+            return "AWS DYNAMODB SDK error: \(reason ?? "No failure reason available")"
+        case .provisionedThroughputExceeded:
+            return "AWS DYNAMODB SDK error: The request was denied due to request throttling"
+        case .throttlingException:
+            return "AWS DYNAMODB SDK error: Your request rate is too high, reduce the frequency of requests and use exponential backoff."
         }
     }
     
