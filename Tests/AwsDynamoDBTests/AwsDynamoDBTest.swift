@@ -13,11 +13,12 @@ class AwsDynamoDBTest: XCTestCase {
     static let secret = ProcessInfo.processInfo.environment["AWS_SECRET"]!
     static let host = "https://dynamodb.us-west-2.amazonaws.com"
     
-    var dynamoDb: AwsDynamoDB?
+    var testTable: AwsDynamoDBTable?
     
     override func setUp() {
         super.setUp()
-        dynamoDb = AwsDynamoDB(host: AwsDynamoDBTest.host, accessKeyId: AwsDynamoDBTest.key, secretAccessKey: AwsDynamoDBTest.secret)
+        let dynamoDb = AwsDynamoDB(host: AwsDynamoDBTest.host, accessKeyId: AwsDynamoDBTest.key, secretAccessKey: AwsDynamoDBTest.secret)
+        testTable = dynamoDb.table(name: "msokol-test")
     }
     
     func testGetItem() {
@@ -25,7 +26,7 @@ class AwsDynamoDBTest: XCTestCase {
         var success = false
         var error: Error?
         let getItemExpectation = expectation(description: "getItemAsyncCall")
-        dynamoDb?.getItem(tableName: "msokol-test", key: (field: "id", value: "Test"), completion: { (rSuccess, rItem: Item?, rError) in
+        testTable?.getItem(key: (field: "id", value: "Test"), completion: { (rSuccess, rItem: Item?, rError) in
             item = rItem
             error = rError
             success = rSuccess
@@ -49,7 +50,7 @@ class AwsDynamoDBTest: XCTestCase {
         let item = Item(id: "Test2", name: "Lol Iks De", bool: true, num: 20)
         let putItemExpectation = expectation(description: "putItemAsyncCall")
         
-        dynamoDb?.putItem(tableName: "msokol-test", item: item, completion: { (rSuccess, rError) in
+        testTable?.put(item: item, completion: { (rSuccess, rError) in
             error = rError
             success = rSuccess
             putItemExpectation.fulfill()
@@ -66,9 +67,9 @@ class AwsDynamoDBTest: XCTestCase {
         let item = Item(id: "Test2", name: "Lol Iks De", bool: true, num: 20)
         let deleteItemExpectation = expectation(description: "deleteItemAsyncCall")
         
-        dynamoDb?.putItem(tableName: "msokol-test", item: item, completion: { (rSuccess, rError) in
+        testTable?.put(item: item, completion: { (rSuccess, rError) in
             if rSuccess {
-                self.dynamoDb?.deleteItem(tableName: "msokol-test", key: (field: "id", value: "Test2"), completion: { (rSuccess, rError) in
+                self.testTable?.deleteItem(key: (field: "id", value: "Test2"), completion: { (rSuccess, rError) in
                     error = rError
                     success = rSuccess
                     deleteItemExpectation.fulfill()
@@ -88,7 +89,7 @@ class AwsDynamoDBTest: XCTestCase {
         var success = false
         var error: Error?
         let queryExpectation = expectation(description: "queryAsyncCall")
-        dynamoDb?.query(tableName: "msokol-test", keyConditionExpression: "id = :ident", expressionAttributeValues: [":ident" : "Test"]) { (rSuccess, rItems: [Item]?, rError) in
+        testTable?.query(keyConditionExpression: "id = :ident", expressionAttributeValues: [":ident" : "Test"]) { (rSuccess, rItems: [Item]?, rError) in
             items = rItems
             error = rError
             success = rSuccess

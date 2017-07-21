@@ -37,18 +37,19 @@ import AwsDynamoDB
 
 The current release supports following functionalities: Get Item, Put Item, Delete Item and Query. Library uses `Codable` to encode and decode items sent and recieved from DynamoDB.
 
-To use library first initialize the `AwsDynamoDB` instance with your credentials and host:
+To use library first initialize the `AwsDynamoDB` instance with your credentials and host. After that initialize `AwsDynamoDBTable` instance:
 ``` swift
 let dynamoDb = AwsDynamoDB(host: "https://dynamodb.us-west-2.amazonaws.com", accessKeyId: "OPKASPJPOAS23IOJS", secretAccessKey: "232(I(%$jnasoijaoiwj2919109233")
+let testTable = dynamoDb.table(name: "test")
 ```
-To get item from DynamoDB use the  `getItem` method of the `AwsDynamoDB` instance:
+To get item from DynamoDB use the  `getItem` method of the `AwsDynamoDBTable` instance:
 ``` swift
-dynamoDb.getItem(tableName: "table1", key: (field: "id", value: "012345"), completion: { (success, item, error) in
+testTable.getItem(key: (field: "id", value: "012345"), completion: { (success, item, error) in
     // Do some work
     ...
 })
 ```
-To put item from DynamoDB use the `putItem` method of the `AwsDynamoDB` instance:
+To put item from DynamoDB use the `putItem` method of the `AwsDynamoDBTable` instance:
 ``` swift
 struct Person: Codable {
     let id: String
@@ -57,21 +58,21 @@ struct Person: Codable {
 
 let person = Person(id: "012345", name: "Bill")
 
-dynamoDb.putItem(tableName: "table1", item: person, completion: { (success, error) in
+testTable.put(item: person, completion: { (success, error) in
     // Do some work
     ...
 })
 ```
-To delete item from DynamoDB use the `deleteItem` method of the `AwsDynamoDB` instance:
+To delete item from DynamoDB use the `deleteItem` method of the `AwsDynamoDBTable` instance:
 ``` swift
-dynamoDb.getItem(tableName: "table1", key: (field: "id", value: "012345"), completion: { (success, error) in
+testTable.deleteItem(key: (field: "id", value: "012345"), completion: { (success, error) in
     // Do some work
     ...
 })
 ```
-To query items in DynamoDB use the `query` method of the `AwsDynamoDB` instance:
+To query items in DynamoDB use the `query` method of the `AwsDynamoDBTable` instance:
 ``` swift
-dynamoDb.query(tableName: "table1", keyConditionExpression: "id = :ident", expressionAttributeValues: [":ident" : "012345"]) { (success, items, error) in
+testTable.query(keyConditionExpression: "id = :ident", expressionAttributeValues: [":ident" : "012345"]) { (success, items, error) in
     // Do some work
     ...
 })

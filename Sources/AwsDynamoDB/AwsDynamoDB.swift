@@ -3,26 +3,10 @@ import AwsSign
 
 public class AwsDynamoDB {
     
-    private enum RequestType: String {
-        case getItem        = "GetItem"
-        case deleteItem     = "DeleteItem"
-        case putItem        = "PutItem"
-        case query          = "Query"
-        
-        var target: String {
-            return "\(AwsDynamoDB.apiVersion).\(rawValue)"
-        }
-    }
-    
-    private static let apiVersion = "DynamoDB_20120810"
-    
-    private let host: String
-    private let session: URLSession
-    private let accessKeyId: String
-    private let secretAccessKey: String
-    
-    private let decoder = JSONDecoder()
-    private let encoder = JSONEncoder()
+    fileprivate let host: String
+    fileprivate let session: URLSession
+    fileprivate let accessKeyId: String
+    fileprivate let secretAccessKey: String
     
     /// Initializes a new AwsDynamoDB client, using the specified host, session, and access credentials.
     ///
@@ -31,6 +15,7 @@ public class AwsDynamoDB {
     ///   - session: Optional parameter, specifying a `URLSession` to be used for all DynamoDB related requests. If not provided, `URLSession(configuration: .default)` will be used.
     ///   - accessKeyId: The access key for using the DynamoDB.
     ///   - secretAccessKey: The secret access key for using the DynamoDB.
+    
     public init(host: String, session: URLSession = URLSession(configuration: .default), accessKeyId: String, secretAccessKey: String) {
         self.host = host.hasSuffix("/") ? host.substring(to: host.characters.index(host.endIndex, offsetBy: -1)) : host
         self.session = session
@@ -38,10 +23,54 @@ public class AwsDynamoDB {
         self.secretAccessKey = secretAccessKey
     }
     
+    /// Initializes `AwsDynamoDBTable` instance for given name.
+    ///
+    /// - name: The name of the table.
+    /// - Returns: `AwsDynamoDBTalbe` instance.
+    public func table(name: String) -> AwsDynamoDBTable {
+        return AwsDynamoDBTable(name: name, dynamoDb: self)
+    }
+    
+}
+
+public struct AwsDynamoDBTable {
+    
+    private enum RequestType: String {
+        case getItem        = "GetItem"
+        case deleteItem     = "DeleteItem"
+        case putItem        = "PutItem"
+        case query          = "Query"
+        
+        var target: String {
+            return "\(AwsDynamoDBTable.apiVersion).\(rawValue)"
+        }
+    }
+    
+    private static let apiVersion = "DynamoDB_20120810"
+    
+    public let name: String
+    
+    private let dynamoDb: AwsDynamoDB
+    
+    private let decoder = JSONDecoder()
+    private let encoder = JSONEncoder()
+    
+    /// Initializes a new `AwsDynamoDBTable` instance, using the specified host, session, access credentials and name.
+    ///
+    /// - Parameters:
+    ///   - name: The name of the table.
+    ///   - host: The host for the DynamoDB, e.g `https://dynamodb.us-west-2.amazonaws.com`
+    ///   - session: Optional parameter, specifying a `URLSession` to be used for all DynamoDB related requests. If not provided, `URLSession(configuration: .default)` will be used.
+    ///   - accessKeyId: The access key for using the DynamoDB.
+    ///   - secretAccessKey: The secret access key for using the DynamoDB.
+    fileprivate init(name: String, dynamoDb: AwsDynamoDB) {
+        self.name = name
+        self.dynamoDb = dynamoDb
+    }
+    
     /// Method used for fetching items from table.
     ///
     /// - Parameters:
-    ///   - tableName: Name of table.
     ///   - key: Tuple that represents primary key, e.g `(field: "id", "012345")`
     ///   - fetchAttributes: Array that represents attributes that should be returned from item. Defaults to empty array.
     ///   - consistentRead: If your application requires a strongly consistent read, set this parameter to 'true'. Defaults to `false`.
@@ -49,8 +78,8 @@ public class AwsDynamoDB {
     ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///   - item: Item returned from DynamoDB or `nil` if request has failed. Item must conform to `Codable` protocol.
     ///   - error: Error if request has failed or `nil` if request has succeeded.
-    public func getItem<T: Codable>(tableName: String, key: (field :String, value: Any), fetchAttributes: [String] = [], consistentRead: Bool = false, completion: @escaping (_ success: Bool, _ item: T?, _ error: Error?) -> Void) {
-        var params: [String : Any] = [ "TableName" : tableName,
+    public func getItem<T: Codable>(key: (field :String, value: Any), fetchAttributes: [String] = [], consistentRead: Bool = false, completion: @escaping (_ success: Bool, _ item: T?, _ error: Error?) -> Void) {
+        var params: [String : Any] = [ "TableName" : name,
                                        "ConsistentRead" : consistentRead,
                                        "Key" : toAwsJson(from: [key.field : key.value]) ]
         if fetchAttributes.count > 0 {
@@ -65,15 +94,15 @@ public class AwsDynamoDB {
             return
         }
         
-        let dataTask = session.dataTask(with: request, completionHandler: { data, response, error in
-            let success = (response as? HTTPURLResponse)?.statusCode ?? 999 <= 299
-            if success,
+        let dataTask = dynamoDb.session.dataTask(with: request, completionHandler: { data, response, error in
+            let error = self.checkForError(response: response, data: data, error: error)
+            if error == nil,
                 let data = data,
                 let jsonObject = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any],
                 let awsJson = jsonObject?["Item"] as? [String : Any] {
                 do {
                     let item: T = try self.deserialize(from: awsJson)
-                    completion(success, item, error)
+                    completion(true, item, error)
                 } catch {
                     completion(false, nil, error)
                 }
@@ -84,16 +113,15 @@ public class AwsDynamoDB {
         dataTask.resume()
     }
     
-    /// Method used for deleting the items from table.
+    /// Method used for deleteting items from table.
     ///
     /// - Parameters:
-    ///   - tableName: The name of the table.
     ///   - key: Tuple that represents primary key, e.g `(field: "id", "012345")`
     ///   - completion: Completion closure that will be called when request has completed.
-    ///   - success: Bool value that will be `true` if request has succeeded, otherwise `false`.
+    ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///   - error: Error if request has failed or `nil` if request has succeeded.
-    public func deleteItem(tableName: String, key: (field :String, value: Any), completion: @escaping (_ success: Bool, _ error: Error?) -> Void) {
-        let params: [String : Any] = [ "TableName" : tableName,
+    public func deleteItem(key: (field :String, value: Any), completion: @escaping (_ success: Bool, _ error: Error?) -> Void) {
+        let params: [String : Any] = [ "TableName" : name,
                                        "Key" : toAwsJson(from: [key.field : key.value]) ]
         
         let request: URLRequest
@@ -104,9 +132,9 @@ public class AwsDynamoDB {
             return
         }
         
-        let dataTask = session.dataTask(with: request, completionHandler: { data, response, error in
-            let success = (response as? HTTPURLResponse)?.statusCode ?? 999 <= 299
-            completion(success, error)
+        let dataTask = dynamoDb.session.dataTask(with: request, completionHandler: { data, response, error in
+            let error = self.checkForError(response: response, data: data, error: error)
+            completion(error == nil, error)
         })
         dataTask.resume()
     }
@@ -114,13 +142,12 @@ public class AwsDynamoDB {
     /// Method used for fetching the items from table.
     ///
     /// - Parameters:
-    ///   - tableName: The name of the table.
     ///   - item: Item to put, must conform to `Codable` protocol.
     ///   - completion: Completion closure that will be called when request has completed.
     ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///   - error: Error if request has failed or `nil` if request has succeeded.
-    public func putItem<T: Codable>(tableName: String, item: T, completion: @escaping (_ success: Bool, _ error: Error?) -> Void) {
-        var params: [String : Any] = [ "TableName" : tableName ]
+    public func put<T: Codable>(item: T, completion: @escaping (_ success: Bool, _ error: Error?) -> Void) {
+        var params: [String : Any] = [ "TableName" : name ]
         let request: URLRequest
         do {
             params["Item"] = try serialize(from: item)
@@ -130,9 +157,9 @@ public class AwsDynamoDB {
             return
         }
         
-        let dataTask = session.dataTask(with: request, completionHandler: { data, response, error in
-            let success = (response as? HTTPURLResponse)?.statusCode ?? 999 <= 299
-            completion(success, error)
+        let dataTask = dynamoDb.session.dataTask(with: request, completionHandler: { data, response, error in
+            let error = self.checkForError(response: response, data: data, error: error)
+            completion(error == nil, error)
         })
         dataTask.resume()
     }
@@ -141,7 +168,6 @@ public class AwsDynamoDB {
     /// For more information, see [Amazon DynamoDB API Documentation.](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Operations.html)
     ///
     /// - Parameters:
-    ///   - tableName: The name of the table.
     ///   - keyConditionExpression: The condition that specifies the key value for items to be retrieved by the query execution.
     ///   - expressionAttributeNames: Substitution tokens for attribute names in an key condition expression.
     ///   - expressionAttributeValues: Values that can be substituted in an key condition expression.
@@ -154,8 +180,8 @@ public class AwsDynamoDB {
     ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///   - items: Items returned from DynamoDB or `nil` if request has failed. Items must conform to `Codable` protocol.
     ///   - error: Error if request has failed or `nil` if request has succeeded.
-    public func query<T: Codable>(tableName: String, keyConditionExpression: String, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : String]? = nil, fetchAttributes: [String] = [], startKey: (field :String, value: Any)? = nil, filterExpression: String? = nil, limit: Int? = nil, consistentRead: Bool = false, completion: @escaping (_ success: Bool, _ items: [T]?, _ error: Error?) -> Void) {
-        var params: [String : Any] = [ "TableName" : tableName,
+    public func query<T: Codable>(keyConditionExpression: String, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : String]? = nil, fetchAttributes: [String] = [], startKey: (field :String, value: Any)? = nil, filterExpression: String? = nil, limit: Int? = nil, consistentRead: Bool = false, completion: @escaping (_ success: Bool, _ items: [T]?, _ error: Error?) -> Void) {
+        var params: [String : Any] = [ "TableName" : name,
                                        "KeyConditionExpression" : keyConditionExpression,
                                        "ConsistentRead" : consistentRead ]
         if let expressionAttributeNames = expressionAttributeNames{
@@ -186,15 +212,15 @@ public class AwsDynamoDB {
             return
         }
         
-        let dataTask = session.dataTask(with: request, completionHandler: { data, response, error in
-            let success = (response as? HTTPURLResponse)?.statusCode ?? 999 <= 299
-            if success,
+        let dataTask = dynamoDb.session.dataTask(with: request, completionHandler: { data, response, error in
+            let error = self.checkForError(response: response, data: data, error: error)
+            if error == nil,
                 let data = data,
                 let jsonObject = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any],
                 let jsonItems = jsonObject?["Items"] as? [[String : Any]] {
                 do {
                     let items: [T] = try jsonItems.map { return try self.deserialize(from: $0) }
-                    completion(success, items, error)
+                    completion(true, items, error)
                 } catch {
                     completion(false, nil, error)
                 }
@@ -324,15 +350,32 @@ public class AwsDynamoDB {
     }
     
     private func request(for type: RequestType, with jsonParams: [String : Any]) throws -> URLRequest {
-        var urlRequest = URLRequest(url: URL(string: host)!)
+        var urlRequest = URLRequest(url: URL(string: dynamoDb.host)!)
         urlRequest.httpMethod = "POST"
         urlRequest.addValue("application/x-amz-json-1.0", forHTTPHeaderField: "Content-Type")
         urlRequest.addValue(type.target, forHTTPHeaderField: "X-Amz-Target")
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: jsonParams, options: [])
         
-        try urlRequest.sign(accessKeyId: accessKeyId, secretAccessKey: secretAccessKey)
+        try urlRequest.sign(accessKeyId: dynamoDb.accessKeyId, secretAccessKey: dynamoDb.secretAccessKey)
         
         return urlRequest
+    }
+    
+    private func checkForError(response: URLResponse?, data: Data?, error: Error?) -> Error? {
+        if let error = error {
+            return error
+        }
+        
+        if (response as? HTTPURLResponse)?.statusCode ?? 999 > 299 {
+            if let data = data,
+                let text = String(data: data, encoding: .utf8) {
+                return AwsDynamoDBError.generalError(reason: text)
+            } else {
+                return AwsDynamoDBError.generalError(reason: nil)
+            }
+        }
+        
+        return nil
     }
     
 }
