@@ -76,9 +76,9 @@ public struct AwsDynamoDBTable {
     ///   - consistentRead: If your application requires a strongly consistent read, set this parameter to 'true'. Defaults to `false`.
     ///   - completion: Completion closure that will be called when request has completed.
     ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
-    ///   - item: Item returned from DynamoDB or `nil` if request has failed. Item must conform to `Codable` protocol.
+    ///   - item: Item returned from DynamoDB or `nil` if request has failed. Item must conform to `Decodable` protocol.
     ///   - error: Error if request has failed or `nil` if request has succeeded.
-    public func getItem<T: Codable>(key: (field :String, value: Any), fetchAttributes: [String] = [], consistentRead: Bool = false, completion: @escaping (_ success: Bool, _ item: T?, _ error: Error?) -> Void) {
+    public func getItem<T: Decodable>(key: (field: String, value: Any), fetchAttributes: [String] = [], consistentRead: Bool = false, completion: @escaping (Bool, T?, Error?) -> Void) {
         var params: [String : Any] = [ "TableName" : name,
                                        "ConsistentRead" : consistentRead,
                                        "Key" : toAwsJson(from: [key.field : key.value]) ]
@@ -120,7 +120,7 @@ public struct AwsDynamoDBTable {
     ///   - completion: Completion closure that will be called when request has completed.
     ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///   - error: Error if request has failed or `nil` if request has succeeded.
-    public func deleteItem(key: (field :String, value: Any), completion: @escaping (_ success: Bool, _ error: Error?) -> Void) {
+    public func deleteItem(key: (field :String, value: Any), completion: @escaping (Bool, Error?) -> Void) {
         let params: [String : Any] = [ "TableName" : name,
                                        "Key" : toAwsJson(from: [key.field : key.value]) ]
         
@@ -142,11 +142,11 @@ public struct AwsDynamoDBTable {
     /// Method used for fetching the items from table.
     ///
     /// - Parameters:
-    ///   - item: Item to put, must conform to `Codable` protocol.
+    ///   - item: Item to put, must conform to `Encodable` protocol.
     ///   - completion: Completion closure that will be called when request has completed.
     ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///   - error: Error if request has failed or `nil` if request has succeeded.
-    public func put<T: Codable>(item: T, completion: @escaping (_ success: Bool, _ error: Error?) -> Void) {
+    public func put<T: Encodable>(item: T, completion: @escaping (Bool, Error?) -> Void) {
         var params: [String : Any] = [ "TableName" : name ]
         let request: URLRequest
         do {
@@ -168,6 +168,7 @@ public struct AwsDynamoDBTable {
     /// For more information, see [Amazon DynamoDB API Documentation.](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Operations.html)
     ///
     /// - Parameters:
+    ///   - indexName: The name of an index to query. This index can be any local secondary index or global secondary index on the table.
     ///   - keyConditionExpression: The condition that specifies the key value for items to be retrieved by the query execution.
     ///   - expressionAttributeNames: Substitution tokens for attribute names in an key condition expression.
     ///   - expressionAttributeValues: Values that can be substituted in an key condition expression.
@@ -180,10 +181,13 @@ public struct AwsDynamoDBTable {
     ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///   - items: Items returned from DynamoDB or `nil` if request has failed. Items must conform to `Codable` protocol.
     ///   - error: Error if request has failed or `nil` if request has succeeded.
-    public func query<T: Codable>(keyConditionExpression: String, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : String]? = nil, fetchAttributes: [String] = [], startKey: (field :String, value: Any)? = nil, filterExpression: String? = nil, limit: Int? = nil, consistentRead: Bool = false, completion: @escaping (_ success: Bool, _ items: [T]?, _ error: Error?) -> Void) {
+    public func query<T: Decodable>(indexName: String? = nil, keyConditionExpression: String, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : String]? = nil, fetchAttributes: [String] = [], startKey: (field :String, value: Any)? = nil, filterExpression: String? = nil, limit: Int? = nil, consistentRead: Bool = false, completion: @escaping (Bool, [T]?, Error?) -> Void) {
         var params: [String : Any] = [ "TableName" : name,
                                        "KeyConditionExpression" : keyConditionExpression,
                                        "ConsistentRead" : consistentRead ]
+        if let indexName = indexName {
+            params["IndexName"] = indexName
+        }
         if let expressionAttributeNames = expressionAttributeNames{
             params["ExpressionAttributeNames"] = expressionAttributeNames
             params["Select"] = "SPECIFIC_ATTRIBUTES"
@@ -231,12 +235,12 @@ public struct AwsDynamoDBTable {
         dataTask.resume()
     }
     
-    private func deserialize<T: Codable>(from awsJson: [String : Any]) throws -> T {
+    private func deserialize<T: Decodable>(from awsJson: [String : Any]) throws -> T {
         let jsonData = try JSONSerialization.data(withJSONObject: toJson(from: awsJson), options: [])
         return try decoder.decode(T.self, from: jsonData)
     }
     
-    private func serialize<T: Codable>(from object: T) throws -> [String : Any] {
+    private func serialize<T: Encodable>(from object: T) throws -> [String : Any] {
         let jsonData = try encoder.encode(object)
         guard let json = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String : Any] else {
             throw AwsDynamoDBError.generalError(reason: "Initializing json dictionary from \(object) failed.")

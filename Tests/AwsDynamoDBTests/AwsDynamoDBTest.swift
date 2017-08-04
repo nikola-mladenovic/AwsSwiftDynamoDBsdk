@@ -22,43 +22,31 @@ class AwsDynamoDBTest: XCTestCase {
     }
     
     func testGetItem() {
-        var item: Item?
-        var success = false
-        var error: Error?
         let getItemExpectation = expectation(description: "getItemAsyncCall")
-        testTable?.getItem(key: (field: "id", value: "Test"), completion: { (rSuccess, rItem: Item?, rError) in
-            item = rItem
-            error = rError
-            success = rSuccess
+        testTable?.getItem(key: (field: "id", value: "Test"), completion: { (success, item: Item?, error) in
+            XCTAssert(success, "Request failed")
+            XCTAssertNil(error, "Error should be nil")
+            XCTAssertNotNil(item, "Item should not be nil")
+            XCTAssert(item?.id == "Test", "Item id should be Test")
+            XCTAssert(item?.name == "Marek Sokol", "Item name should be Marek Sokol")
+            XCTAssert(item?.bool == false, "Item bool should be false")
+            XCTAssert(item?.num == 21, "Item num should be 21.")
             getItemExpectation.fulfill()
         })
         
         waitForExpectations(timeout: 3, handler: nil)
-        
-        XCTAssert(success, "Request failed")
-        XCTAssertNil(error, "Error should be nil")
-        XCTAssertNotNil(item, "Item should not be nil")
-        XCTAssert(item?.id == "Test", "Item id should be Test")
-        XCTAssert(item?.name == "Marek Sokol", "Item name should be Marek Sokol")
-        XCTAssert(item?.bool == false, "Item bool should be false")
-        XCTAssert(item?.num == 21, "Item num should be 21.")
     }
     
     func testPutItem() {
-        var success = false
-        var error: Error?
         let item = Item(id: "Test2", name: "Lol Iks De", bool: true, num: 20)
         let putItemExpectation = expectation(description: "putItemAsyncCall")
         
-        testTable?.put(item: item, completion: { (rSuccess, rError) in
-            error = rError
-            success = rSuccess
+        testTable?.put(item: item, completion: { success, error in
+            XCTAssert(success, "Request failed")
+            XCTAssertNil(error, "Error should be nil")
             putItemExpectation.fulfill()
         })
         waitForExpectations(timeout: 3, handler: nil)
-        
-        XCTAssert(success, "Request failed")
-        XCTAssertNil(error, "Error should be nil")
     }
     
     func testDeleteItem() {
@@ -85,28 +73,20 @@ class AwsDynamoDBTest: XCTestCase {
     }
     
     func testQuery() {
-        var items: [Item]?
-        var success = false
-        var error: Error?
         let queryExpectation = expectation(description: "queryAsyncCall")
-        testTable?.query(keyConditionExpression: "id = :ident", expressionAttributeValues: [":ident" : "Test"]) { (rSuccess, rItems: [Item]?, rError) in
-            items = rItems
-            error = rError
-            success = rSuccess
+        testTable?.query(keyConditionExpression: "id = :ident", expressionAttributeValues: [":ident" : "Test"]) { (success, items: [Item]?, error) in
+            let item = items?.first
+            XCTAssert(success, "Request failed")
+            XCTAssertNil(error, "Error should be nil")
+            XCTAssertNotNil(items, "Item should not be nil")
+            XCTAssert(items?.count == 1, "Query should return only one item")
+            XCTAssert(item?.id == "Test", "Item id should be Test")
+            XCTAssert(item?.name == "Marek Sokol", "Item name should be Marek Sokol")
+            XCTAssert(item?.bool == false, "Item bool should be false")
+            XCTAssert(item?.num == 21, "Item num should be 21")
             queryExpectation.fulfill()
         }
-        
         waitForExpectations(timeout: 3, handler: nil)
-        
-        let item = items?.first
-        XCTAssert(success, "Request failed")
-        XCTAssertNil(error, "Error should be nil")
-        XCTAssertNotNil(items, "Item should not be nil")
-        XCTAssert(items?.count == 1, "Query should return only one item")
-        XCTAssert(item?.id == "Test", "Item id should be Test")
-        XCTAssert(item?.name == "Marek Sokol", "Item name should be Marek Sokol")
-        XCTAssert(item?.bool == false, "Item bool should be false")
-        XCTAssert(item?.num == 21, "Item num should be 21")
     }
 
     static var allTests = [
