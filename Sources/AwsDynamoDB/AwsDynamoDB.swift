@@ -381,7 +381,7 @@ public struct AwsDynamoDBTable {
                 } else if type.contains("ThrottlingException") {
                     return AwsDynamoDBError.throttlingException
                 } else {
-                    return AwsDynamoDBError.generalError(reason: json["message"] as? String)
+                    return AwsDynamoDBError.generalError(reason: json["Message"] as? String)
                 }
             } else if let text = String(data: data, encoding: .utf8) {
                 return AwsDynamoDBError.generalError(reason: text)
