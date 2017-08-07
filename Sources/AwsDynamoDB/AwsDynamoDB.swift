@@ -1,4 +1,5 @@
 import Foundation
+import Dispatch
 import AwsSign
 
 public class AwsDynamoDB {
@@ -93,9 +94,7 @@ public struct AwsDynamoDBTable {
             completion(false, nil, error)
             return
         }
-        
-        let dataTask = dynamoDb.session.dataTask(with: request, completionHandler: { data, response, error in
-            let error = self.checkForError(response: response, data: data, error: error)
+        perform(request: request) { (data, response, error) in
             if error == nil,
                 let data = data,
                 let jsonObject = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any],
@@ -109,8 +108,7 @@ public struct AwsDynamoDBTable {
             } else {
                 completion(false, nil, error)
             }
-        })
-        dataTask.resume()
+        }
     }
     
     /// Method used for deleteting items from table.
@@ -132,11 +130,9 @@ public struct AwsDynamoDBTable {
             return
         }
         
-        let dataTask = dynamoDb.session.dataTask(with: request, completionHandler: { data, response, error in
-            let error = self.checkForError(response: response, data: data, error: error)
+        perform(request: request) { (data, response, error) in
             completion(error == nil, error)
-        })
-        dataTask.resume()
+        }
     }
     
     /// Method used for fetching the items from table.
@@ -157,11 +153,9 @@ public struct AwsDynamoDBTable {
             return
         }
         
-        let dataTask = dynamoDb.session.dataTask(with: request, completionHandler: { data, response, error in
-            let error = self.checkForError(response: response, data: data, error: error)
+        perform(request: request) { (data, response, error) in
             completion(error == nil, error)
-        })
-        dataTask.resume()
+        }
     }
     
     /// Method used to execute query on a given table.
@@ -216,8 +210,7 @@ public struct AwsDynamoDBTable {
             return
         }
         
-        let dataTask = dynamoDb.session.dataTask(with: request, completionHandler: { data, response, error in
-            let error = self.checkForError(response: response, data: data, error: error)
+        perform(request: request) { (data, response, error) in
             if error == nil,
                 let data = data,
                 let jsonObject = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any],
@@ -231,8 +224,7 @@ public struct AwsDynamoDBTable {
             } else {
                 completion(false, nil, error)
             }
-        })
-        dataTask.resume()
+        }
     }
     
     private func deserialize<T: Decodable>(from awsJson: [String : Any]) throws -> T {
@@ -363,6 +355,30 @@ public struct AwsDynamoDBTable {
         try urlRequest.sign(accessKeyId: dynamoDb.accessKeyId, secretAccessKey: dynamoDb.secretAccessKey)
         
         return urlRequest
+    }
+    
+    private func perform(request: URLRequest, backoffTime: TimeInterval = 0, completion: @escaping (_ data: Data?, _ response: URLResponse?, _ error: Error?) -> Void) {
+        DispatchQueue.global().asyncAfter(deadline: .now() + backoffTime) {
+            let dataTask = self.dynamoDb.session.dataTask(with: request) { (data, response, error) in
+                let error = self.checkForError(response: response, data: data, error: error)
+                if let awsDynamoDBError = error as? AwsDynamoDBError {
+                    switch awsDynamoDBError {
+                    case .provisionedThroughputExceeded, .throttlingException:
+                        let newBackoffTime = backoffTime == 0 ? 0.05 : backoffTime * 2
+                        if newBackoffTime < 60 {
+                            self.perform(request: request, backoffTime: newBackoffTime, completion: completion)
+                        } else {
+                            fallthrough
+                        }
+                    default:
+                        completion(data, response, error)
+                    }
+                } else {
+                    completion(data, response, error)
+                }
+            }
+            dataTask.resume()
+        }
     }
     
     private func checkForError(response: URLResponse?, data: Data?, error: Error?) -> Error? {
