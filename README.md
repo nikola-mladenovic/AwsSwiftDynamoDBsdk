@@ -85,6 +85,12 @@ To query items in DynamoDB use the `query` method of the `AwsDynamoDBTable` inst
 testTable.query(keyConditionExpression: "id = :ident", expressionAttributeValues: [":ident" : "012345"]) { (success, items, error) in
     // Do some work
     ...
-})
+}
 ```
-
+To scan items in DynamoDB use the `scan` method of the `AwsDynamoDBTable` instance:
+``` swift
+testTable.scan(expressionAttributeValues: [":ident" : "Test"], filterExpression: "id = :ident", limit: 1) { (success, items, error) in
+// Do some work
+...
+}
+```

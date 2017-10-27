@@ -42,6 +42,7 @@ public struct AwsDynamoDBTable {
         case putItem        = "PutItem"
         case query          = "Query"
         case updateItem     = "UpdateItem"
+        case scan           = "Scan"
         
         var target: String {
             return "\(AwsDynamoDBTable.apiVersion).\(rawValue)"
@@ -231,7 +232,7 @@ public struct AwsDynamoDBTable {
             params["ExpressionAttributeValues"] = toAwsJson(from: expressionAttributeValues)
         }
         if let startKey = startKey{
-            params["StartKey"] = toAwsJson(from: [startKey.field : startKey.value])
+            params["ExclusiveStartKey"] = toAwsJson(from: [startKey.field : startKey.value])
         }
         if let filterExpression = filterExpression{
             params["FilterExpression"] = filterExpression
@@ -246,6 +247,73 @@ public struct AwsDynamoDBTable {
         let request: URLRequest
         do {
             request = try self.request(for: .query, with: params)
+        } catch {
+            completion(false, nil, error)
+            return
+        }
+        
+        perform(request: request) { (data, response, error) in
+            if error == nil,
+                let data = data,
+                let jsonObject = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any],
+                let jsonItems = jsonObject?["Items"] as? [[String : Any]] {
+                do {
+                    let items: [T] = try jsonItems.map { return try self.deserialize(from: $0) }
+                    completion(true, items, error)
+                } catch {
+                    completion(false, nil, error)
+                }
+            } else {
+                completion(false, nil, error)
+            }
+        }
+    }
+    
+    /// Method used to execute scan on a given table.
+    /// For more information, see [Amazon DynamoDB API Documentation.](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Operations.html)
+    ///
+    /// - Parameters:
+    ///   - indexName: The name of an seconday index used for scanning operation.
+    ///   - expressionAttributeNames: Substitution tokens for attribute names in an key condition expression.
+    ///   - expressionAttributeValues: Values that can be substituted in an key condition expression.
+    ///   - fetchAttributes: Array that represents attributes that should be returned from item. Defaults to empty array.
+    ///   - startKey: Tuple that represents key, e.g `(field: "id", "012345")`. If start key is specified, scan will start from item with that key. Defaults to `nil`.
+    ///   - filterExpression: A string that contains conditions that DynamoDB applies after the query operation, but before the items are returned to you. Items that do not satisfy criteria are not returned.
+    ///   - limit: Limit number of items returned by query. Defaults to nil.
+    ///   - consistentRead: If your application requires a strongly consistent read, set this parameter to 'true'. Defaults to `false`.
+    ///   - completion: Completion closure that will be called when request has completed.
+    ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
+    ///   - items: Items returned from DynamoDB or `nil` if request has failed. Items must conform to `Codable` protocol.
+    ///   - error: Error if request has failed or `nil` if request has succeeded.
+    public func scan<T: Decodable>(indexName: String? = nil, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : Any]? = nil, fetchAttributes: [String] = [], startKey: (field :String, value: Any)? = nil, filterExpression: String? = nil, limit: Int? = nil, consistentRead: Bool = false, completion: @escaping (Bool, [T]?, Error?) -> Void) {
+        var params: [String : Any] = [ "TableName" : name,
+                                       "ConsistentRead" : consistentRead ]
+        if let indexName = indexName {
+            params["IndexName"] = indexName
+        }
+        if let expressionAttributeNames = expressionAttributeNames{
+            params["ExpressionAttributeNames"] = expressionAttributeNames
+            params["Select"] = "SPECIFIC_ATTRIBUTES"
+        }
+        if let expressionAttributeValues = expressionAttributeValues{
+            params["ExpressionAttributeValues"] = toAwsJson(from: expressionAttributeValues)
+        }
+        if let startKey = startKey{
+            params["ExclusiveStartKey"] = toAwsJson(from: [startKey.field : startKey.value])
+        }
+        if let filterExpression = filterExpression{
+            params["FilterExpression"] = filterExpression
+        }
+        if let limit = limit{
+            params["Limit"] = limit
+        }
+        if fetchAttributes.count > 0 {
+            params["ProjectionExpression"] = fetchAttributes.joined(separator: ",")
+        }
+        
+        let request: URLRequest
+        do {
+            request = try self.request(for: .scan, with: params)
         } catch {
             completion(false, nil, error)
             return
@@ -438,7 +506,9 @@ public struct AwsDynamoDBTable {
                 } else if type.contains("ThrottlingException") {
                     return AwsDynamoDBError.throttlingException
                 } else {
-                    return AwsDynamoDBError.generalError(reason: json["Message"] as? String)
+                    // AWS does not use same key for error messages.
+                    let message = json["message"] ?? json["Message"]
+                    return AwsDynamoDBError.generalError(reason: message as? String)
                 }
             } else if let text = String(data: data, encoding: .utf8) {
                 return AwsDynamoDBError.generalError(reason: text)
