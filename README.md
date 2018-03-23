@@ -70,6 +70,16 @@ testTable.deleteItem(key: (field: "id", value: "012345"), completion: { (success
     ...
 })
 ```
+To update item on DynamoDB use the `update` method of the `AwsDynamoDBTable` instance:
+``` swift
+testTable.update(key: (field: "id", value: "012345"),
+                 expressionAttributeValues: [":newBool" : true, ":incVal" : 3],
+                 updateExpression: "SET bool=:newBool, num = num + :incVal",
+                 completion: { (success, error) in
+    // Do some work
+    ...
+})
+```
 To query items in DynamoDB use the `query` method of the `AwsDynamoDBTable` instance:
 ``` swift
 testTable.query(keyConditionExpression: "id = :ident", expressionAttributeValues: [":ident" : "012345"]) { (success, items, error) in

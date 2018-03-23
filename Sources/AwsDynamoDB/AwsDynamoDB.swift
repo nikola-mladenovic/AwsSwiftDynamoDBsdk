@@ -41,6 +41,7 @@ public struct AwsDynamoDBTable {
         case deleteItem     = "DeleteItem"
         case putItem        = "PutItem"
         case query          = "Query"
+        case updateItem     = "UpdateItem"
         
         var target: String {
             return "\(AwsDynamoDBTable.apiVersion).\(rawValue)"
@@ -76,9 +77,9 @@ public struct AwsDynamoDBTable {
     ///   - fetchAttributes: Array that represents attributes that should be returned from item. Defaults to empty array.
     ///   - consistentRead: If your application requires a strongly consistent read, set this parameter to 'true'. Defaults to `false`.
     ///   - completion: Completion closure that will be called when request has completed.
-    ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
-    ///   - item: Item returned from DynamoDB or `nil` if request has failed. Item must conform to `Decodable` protocol.
-    ///   - error: Error if request has failed or `nil` if request has succeeded.
+    ///     - success: Bool value that will be `true` if request has succeeded, otherwise false.
+    ///     - item: Item returned from DynamoDB or `nil` if request has failed. Item must conform to `Decodable` protocol.
+    ///     - error: Error if request has failed or `nil` if request has succeeded.
     public func getItem<T: Decodable>(key: (field: String, value: Any), fetchAttributes: [String] = [], consistentRead: Bool = false, completion: @escaping (Bool, T?, Error?) -> Void) {
         var params: [String : Any] = [ "TableName" : name,
                                        "ConsistentRead" : consistentRead,
@@ -116,8 +117,8 @@ public struct AwsDynamoDBTable {
     /// - Parameters:
     ///   - key: Tuple that represents primary key, e.g `(field: "id", "012345")`
     ///   - completion: Completion closure that will be called when request has completed.
-    ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
-    ///   - error: Error if request has failed or `nil` if request has succeeded.
+    ///     - success: Bool value that will be `true` if request has succeeded, otherwise false.
+    ///     - error: Error if request has failed or `nil` if request has succeeded.
     public func deleteItem(key: (field :String, value: Any), completion: @escaping (Bool, Error?) -> Void) {
         let params: [String : Any] = [ "TableName" : name,
                                        "Key" : toAwsJson(from: [key.field : key.value]) ]
@@ -135,19 +136,59 @@ public struct AwsDynamoDBTable {
         }
     }
     
-    /// Method used for fetching the items from table.
+    /// Method used for saving the items to table.
     ///
     /// - Parameters:
     ///   - item: Item to put, must conform to `Encodable` protocol.
     ///   - completion: Completion closure that will be called when request has completed.
-    ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
-    ///   - error: Error if request has failed or `nil` if request has succeeded.
+    ///      success: Bool value that will be `true` if request has succeeded, otherwise false.
+    ///     - error: Error if request has failed or `nil` if request has succeeded.
     public func put<T: Encodable>(item: T, completion: @escaping (Bool, Error?) -> Void) {
         var params: [String : Any] = [ "TableName" : name ]
         let request: URLRequest
         do {
             params["Item"] = try serialize(from: item)
             request = try self.request(for: .putItem, with: params)
+        } catch {
+            completion(false, error)
+            return
+        }
+        
+        perform(request: request) { (data, response, error) in
+            completion(error == nil, error)
+        }
+    }
+    
+    /// Methods used for updating the items in table.
+    ///
+    /// - Parameters:
+    ///   - key: Tuple that represents primary key, e.g `(field: "id", "012345")`
+    ///   - conditionExpression: A condition that must be satisfied in order for a conditional update to succeed.
+    ///   - expressionAttributeNames: One or more substitution tokens for attribute names in an expression.
+    ///   - expressionAttributeValues: One or more values that can be substituted in an expression.
+    ///   - updateExpression: An expression that defines one or more attributes to be updated, the action to be performed on them, and new value(s) for them. For more information, see [Amazon DynamoDB Update Expressions Documentation.](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html)
+    ///   - completion: Completion closure that will be called when request has completed.
+    ///     - success: Bool value that will be `true` if request has succeeded, otherwise false.
+    ///     - error: Error if request has failed or `nil` if request has succeeded.
+    public func update(key: (field :String, value: Any), conditionExpression: String? = nil, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : Any]? = nil, updateExpression: String? = nil, completion: @escaping (Bool, Error?) -> Void) {
+        var params: [String : Any] = [ "TableName" : name,
+                                       "Key" : toAwsJson(from: [key.field : key.value]) ]
+        if let conditionExpression = conditionExpression {
+            params["ConditionExpression"] = conditionExpression
+        }
+        if let expressionAttributeNames = expressionAttributeNames{
+            params["ExpressionAttributeNames"] = expressionAttributeNames
+        }
+        if let expressionAttributeValues = expressionAttributeValues{
+            params["ExpressionAttributeValues"] = toAwsJson(from: expressionAttributeValues)
+        }
+        if let updateExpression = updateExpression {
+            params["UpdateExpression"] = updateExpression
+        }
+        
+        let request: URLRequest
+        do {
+            request = try self.request(for: .updateItem, with: params)
         } catch {
             completion(false, error)
             return
@@ -172,10 +213,10 @@ public struct AwsDynamoDBTable {
     ///   - limit: Limit number of items returned by query. Defaults to nil.
     ///   - consistentRead: If your application requires a strongly consistent read, set this parameter to 'true'. Defaults to `false`.
     ///   - completion: Completion closure that will be called when request has completed.
-    ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
-    ///   - items: Items returned from DynamoDB or `nil` if request has failed. Items must conform to `Codable` protocol.
-    ///   - error: Error if request has failed or `nil` if request has succeeded.
-    public func query<T: Decodable>(indexName: String? = nil, keyConditionExpression: String, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : String]? = nil, fetchAttributes: [String] = [], startKey: (field :String, value: Any)? = nil, filterExpression: String? = nil, limit: Int? = nil, consistentRead: Bool = false, completion: @escaping (Bool, [T]?, Error?) -> Void) {
+    ///     - success: Bool value that will be `true` if request has succeeded, otherwise false.
+    ///     - items: Items returned from DynamoDB or `nil` if request has failed. Items must conform to `Codable` protocol.
+    ///     - error: Error if request has failed or `nil` if request has succeeded.
+    public func query<T: Decodable>(indexName: String? = nil, keyConditionExpression: String, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : Any]? = nil, fetchAttributes: [String] = [], startKey: (field :String, value: Any)? = nil, filterExpression: String? = nil, limit: Int? = nil, consistentRead: Bool = false, completion: @escaping (Bool, [T]?, Error?) -> Void) {
         var params: [String : Any] = [ "TableName" : name,
                                        "KeyConditionExpression" : keyConditionExpression,
                                        "ConsistentRead" : consistentRead ]

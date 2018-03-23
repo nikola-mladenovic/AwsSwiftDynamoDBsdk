@@ -72,6 +72,28 @@ class AwsDynamoDBTest: XCTestCase {
         XCTAssertNil(error, "Error should be nil")
     }
     
+    func testUpdateItem() {
+        let item = Item(id: "TestUpdateItem", name: "Update Item", bool: false, num: 2)
+        let testUpdateItemExpectation = expectation(description: "testUpdateItem")
+        
+        let key: (String, Any) = (field: "id", value: "TestUpdateItem")
+        testTable?.deleteItem(key: key, completion: { _, _ in
+            self.testTable?.put(item: item, completion: { _, _ in
+                self.testTable?.update(key: key, expressionAttributeValues: [":newBool" : true, ":incVal" : 3], updateExpression: "SET bool=:newBool, num = num + :incVal", completion: { success, error in
+                    self.testTable?.getItem(key: key, completion: { (_, item: Item?, _) in
+                        XCTAssert(success, "Request failed")
+                        XCTAssertNil(error, "Error should be nil")
+                        XCTAssert(item?.bool == true, "Bool not updated")
+                        XCTAssert(item?.num == 5, "Num not incremented")
+                        testUpdateItemExpectation.fulfill()
+                    })
+                })
+            })
+        })
+        
+        waitForExpectations(timeout: 5, handler: nil)
+    }
+    
     func testQuery() {
         let queryExpectation = expectation(description: "queryAsyncCall")
         testTable?.query(keyConditionExpression: "id = :ident", expressionAttributeValues: [":ident" : "Test"]) { (success, items: [Item]?, error) in
@@ -94,5 +116,6 @@ class AwsDynamoDBTest: XCTestCase {
         ("testPutItem", testPutItem),
         ("testDeleteItem", testDeleteItem),
         ("testQuery", testQuery),
+        ("testUpdateItem", testUpdateItem)
     ]
 }
