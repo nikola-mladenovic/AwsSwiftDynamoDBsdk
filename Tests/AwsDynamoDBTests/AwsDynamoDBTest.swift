@@ -110,12 +110,30 @@ class AwsDynamoDBTest: XCTestCase {
         }
         waitForExpectations(timeout: 3, handler: nil)
     }
+    
+    func testScan() {
+        let scanExpectation = expectation(description: "scanExpectation")
+        testTable?.scan(expressionAttributeValues: [":ident" : "TestScan"], filterExpression: "id = :ident") { (success, items: [Item]?, error) in
+            let item = items?.first
+            XCTAssert(success, "Request failed")
+            XCTAssertNil(error, "Error should be nil")
+            XCTAssertNotNil(items, "Item should not be nil")
+            XCTAssert(items?.count == 1, "Query should return only one item")
+            XCTAssert(item?.id == "TestScan", "Item id should be Test")
+            XCTAssert(item?.name == "Marek Sokol", "Item name should be Marek Sokol")
+            XCTAssert(item?.bool == false, "Item bool should be false")
+            XCTAssert(item?.num == 21, "Item num should be 21")
+            scanExpectation.fulfill()
+        }
+        waitForExpectations(timeout: 3, handler: nil)
+    }
 
     static var allTests = [
         ("testGetItem", testGetItem),
         ("testPutItem", testPutItem),
         ("testDeleteItem", testDeleteItem),
         ("testQuery", testQuery),
-        ("testUpdateItem", testUpdateItem)
+        ("testUpdateItem", testUpdateItem),
+        ("testScan", testScan)
     ]
 }
