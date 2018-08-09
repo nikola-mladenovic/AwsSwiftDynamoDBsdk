@@ -171,7 +171,7 @@ public struct AwsDynamoDBTable {
     ///   - completion: Completion closure that will be called when request has completed.
     ///     - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///     - error: Error if request has failed or `nil` if request has succeeded.
-    public func update(key: (field :String, value: Any), conditionExpression: String? = nil, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : Any]? = nil, updateExpression: String? = nil, completion: @escaping (Bool, Error?) -> Void) {
+    public func update(key: (field :String, value: Any), conditionExpression: String? = nil, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : Any?]? = nil, updateExpression: String? = nil, completion: @escaping (Bool, Error?) -> Void) {
         var params: [String : Any] = [ "TableName" : name,
                                        "Key" : toAwsJson(from: [key.field : key.value]) ]
         if let conditionExpression = conditionExpression {
@@ -349,7 +349,7 @@ public struct AwsDynamoDBTable {
         return toAwsJson(from: json)
     }
     
-    private func toAwsJson(from json: [String : Any]) -> [String : Any] {
+    private func toAwsJson(from json: [String : Any?]) -> [String : Any] {
         var awsJson = [String : Any]()
         
         json.forEach { (key, value) in
@@ -360,8 +360,11 @@ public struct AwsDynamoDBTable {
         return awsJson
     }
     
-    private func toAwsJsonValue(from value: Any) -> [String : Any]? {
-        let value = "\(Mirror(reflecting: value).subjectType)" == "__NSCFBoolean" ? value as! Bool : value
+    private func toAwsJsonValue(from value: Any?) -> [String : Any]? {
+        guard var value = value else {
+            return ["NULL" : true]
+        }
+        value = "\(Mirror(reflecting: value).subjectType)" == "__NSCFBoolean" ? value as! Bool : value
         switch value {
         case is String:
             return ["S" : value]
@@ -386,8 +389,6 @@ public struct AwsDynamoDBTable {
         case is [Data]:
             let dataArray = (value as! [Data]).map { $0.base64EncodedData() }
             return ["BS" : dataArray]
-        case nil:
-            return ["NULL" : true]
         default:
             return nil
         }
