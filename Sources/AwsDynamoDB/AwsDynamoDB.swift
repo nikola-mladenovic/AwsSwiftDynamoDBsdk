@@ -58,6 +58,13 @@ public struct AwsDynamoDBTable {
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
     
+    private var dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ"
+        return formatter
+    }()
+    
     /// Initializes a new `AwsDynamoDBTable` instance, using the specified host, session, access credentials and name.
     ///
     /// - Parameters:
@@ -69,6 +76,9 @@ public struct AwsDynamoDBTable {
     fileprivate init(name: String, dynamoDb: AwsDynamoDB) {
         self.name = name
         self.dynamoDb = dynamoDb
+        
+        decoder.dateDecodingStrategy = .formatted(dateFormatter)
+        encoder.dateEncodingStrategy = .formatted(dateFormatter)
     }
     
     /// Method used for fetching items from table.
