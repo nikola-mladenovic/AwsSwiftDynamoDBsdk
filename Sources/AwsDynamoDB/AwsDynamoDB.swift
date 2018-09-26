@@ -372,7 +372,7 @@ public struct AwsDynamoDBTable {
         case is String:
             return ["S" : value]
         case is [String]:
-            return ["SS" : value]
+            return ["L" : (value as! [String]).map { toAwsJsonValue(from: $0) } as! [[String : Any]] ]
         case is Int, is Double:
             return ["N" : "\(value)"]
         case is [Int], is [Double]:
