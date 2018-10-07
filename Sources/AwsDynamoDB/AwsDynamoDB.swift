@@ -18,7 +18,7 @@ public class AwsDynamoDB {
     ///   - secretAccessKey: The secret access key for using the DynamoDB.
     
     public init(host: String, session: URLSession = URLSession(configuration: .default), accessKeyId: String, secretAccessKey: String) {
-        self.host = host.hasSuffix("/") ? host.substring(to: host.characters.index(host.endIndex, offsetBy: -1)) : host
+        self.host = host.hasSuffix("/") ? String(host[..<host.index(before: host.endIndex)]) : host
         self.session = session
         self.accessKeyId = accessKeyId
         self.secretAccessKey = secretAccessKey
