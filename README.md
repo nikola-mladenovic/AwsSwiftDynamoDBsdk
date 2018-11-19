@@ -24,7 +24,7 @@ This package builds with Swift Package Manager. Ensure you have installed and ac
 To use AwsSns, modify the Package.swift file and add following dependency:
 
 ``` swift
-.package(url: "https://github.com/nikola-mladenovic/AwsSwiftDynamoDBsdk", .branch("master"))
+.package(url: "https://github.com/nikola-mladenovic/AwsSwiftDynamoDBsdk", from: "0.2.0")
 ```
 
 Then import the `AwsDynamoDB` library into the swift source code:
