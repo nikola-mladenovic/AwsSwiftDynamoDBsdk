@@ -74,17 +74,17 @@ public struct AwsDynamoDBTable {
     /// Method used for fetching items from table.
     ///
     /// - Parameters:
-    ///   - key: Tuple that represents primary key, e.g `(field: "id", "012345")`
+    ///   - key: Dictionary that represents primary key, e.g `["id" : "012345"]`
     ///   - fetchAttributes: Array that represents attributes that should be returned from item. Defaults to empty array.
     ///   - consistentRead: If your application requires a strongly consistent read, set this parameter to 'true'. Defaults to `false`.
     ///   - completion: Completion closure that will be called when request has completed.
     ///     - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///     - item: Item returned from DynamoDB or `nil` if request has failed. Item must conform to `Decodable` protocol.
     ///     - error: Error if request has failed or `nil` if request has succeeded.
-    public func getItem<T: Decodable>(key: (field: String, value: Any), fetchAttributes: [String] = [], consistentRead: Bool = false, completion: @escaping (Bool, T?, Error?) -> Void) {
+    public func getItem<T: Decodable>(key: [String : Any?], fetchAttributes: [String] = [], consistentRead: Bool = false, completion: @escaping (Bool, T?, Error?) -> Void) {
         var params: [String : Any] = [ "TableName" : name,
                                        "ConsistentRead" : consistentRead,
-                                       "Key" : toAwsJson(from: [key.field : key.value]) ]
+                                       "Key" : toAwsJson(from: key) ]
         if fetchAttributes.count > 0 {
             params["ProjectionExpression"] = fetchAttributes.joined(separator: ",")
         }
@@ -116,13 +116,13 @@ public struct AwsDynamoDBTable {
     /// Method used for deleteting items from table.
     ///
     /// - Parameters:
-    ///   - key: Tuple that represents primary key, e.g `(field: "id", "012345")`
+    ///   - key: Dictionary that represents primary key, e.g `["id" : "012345"]`
     ///   - completion: Completion closure that will be called when request has completed.
     ///     - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///     - error: Error if request has failed or `nil` if request has succeeded.
-    public func deleteItem(key: (field :String, value: Any), completion: @escaping (Bool, Error?) -> Void) {
+    public func deleteItem(key: [String : Any], completion: @escaping (Bool, Error?) -> Void) {
         let params: [String : Any] = [ "TableName" : name,
-                                       "Key" : toAwsJson(from: [key.field : key.value]) ]
+                                       "Key" : toAwsJson(from: key) ]
         
         let request: URLRequest
         do {
@@ -163,7 +163,7 @@ public struct AwsDynamoDBTable {
     /// Methods used for updating the items in table.
     ///
     /// - Parameters:
-    ///   - key: Tuple that represents primary key, e.g `(field: "id", "012345")`
+    ///   - key: Dictionary that represents primary key, e.g `["id" : "012345"]`
     ///   - conditionExpression: A condition that must be satisfied in order for a conditional update to succeed.
     ///   - expressionAttributeNames: One or more substitution tokens for attribute names in an expression.
     ///   - expressionAttributeValues: One or more values that can be substituted in an expression.
@@ -171,9 +171,9 @@ public struct AwsDynamoDBTable {
     ///   - completion: Completion closure that will be called when request has completed.
     ///     - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///     - error: Error if request has failed or `nil` if request has succeeded.
-    public func update(key: (field :String, value: Any), conditionExpression: String? = nil, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : Any?]? = nil, updateExpression: String? = nil, completion: @escaping (Bool, Error?) -> Void) {
+    public func update(key: [String : Any], conditionExpression: String? = nil, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : Any?]? = nil, updateExpression: String? = nil, completion: @escaping (Bool, Error?) -> Void) {
         var params: [String : Any] = [ "TableName" : name,
-                                       "Key" : toAwsJson(from: [key.field : key.value]) ]
+                                       "Key" : toAwsJson(from: key) ]
         if let conditionExpression = conditionExpression {
             params["ConditionExpression"] = conditionExpression
         }
@@ -209,7 +209,7 @@ public struct AwsDynamoDBTable {
     ///   - expressionAttributeNames: Substitution tokens for attribute names in an key condition expression.
     ///   - expressionAttributeValues: Values that can be substituted in an key condition expression.
     ///   - fetchAttributes: Array that represents attributes that should be returned from item. Defaults to empty array.
-    ///   - startKey: Tuple that represents primary key, e.g `(field: "id", "012345")`. If start key is specified, query will start from item with that key. Defaults to `nil`.
+    ///   - startKey: Dictionary that represents primary key, e.g `["id" : "012345"]`. If start key is specified, query will start from item with that key. Defaults to `nil`.
     ///   - filterExpression: A string that contains conditions that DynamoDB applies after the query operation, but before the items are returned to you. Items that do not satisfy criteria are not returned.
     ///   - limit: Limit number of items returned by query. Defaults to nil.
     ///   - consistentRead: If your application requires a strongly consistent read, set this parameter to 'true'. Defaults to `false`.
@@ -217,7 +217,7 @@ public struct AwsDynamoDBTable {
     ///     - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///     - items: Items returned from DynamoDB or `nil` if request has failed. Items must conform to `Codable` protocol.
     ///     - error: Error if request has failed or `nil` if request has succeeded.
-    public func query<T: Decodable>(indexName: String? = nil, keyConditionExpression: String, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : Any]? = nil, fetchAttributes: [String] = [], startKey: (field :String, value: Any)? = nil, filterExpression: String? = nil, limit: Int? = nil, consistentRead: Bool = false, completion: @escaping (Bool, [T]?, Error?) -> Void) {
+    public func query<T: Decodable>(indexName: String? = nil, keyConditionExpression: String, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : Any]? = nil, fetchAttributes: [String] = [], startKey: [String : Any]? = nil, filterExpression: String? = nil, limit: Int? = nil, consistentRead: Bool = false, completion: @escaping (Bool, [T]?, Error?) -> Void) {
         var params: [String : Any] = [ "TableName" : name,
                                        "KeyConditionExpression" : keyConditionExpression,
                                        "ConsistentRead" : consistentRead ]
@@ -232,7 +232,7 @@ public struct AwsDynamoDBTable {
             params["ExpressionAttributeValues"] = toAwsJson(from: expressionAttributeValues)
         }
         if let startKey = startKey{
-            params["ExclusiveStartKey"] = toAwsJson(from: [startKey.field : startKey.value])
+            params["ExclusiveStartKey"] = toAwsJson(from: startKey)
         }
         if let filterExpression = filterExpression{
             params["FilterExpression"] = filterExpression
@@ -277,7 +277,7 @@ public struct AwsDynamoDBTable {
     ///   - expressionAttributeNames: Substitution tokens for attribute names in an key condition expression.
     ///   - expressionAttributeValues: Values that can be substituted in an key condition expression.
     ///   - fetchAttributes: Array that represents attributes that should be returned from item. Defaults to empty array.
-    ///   - startKey: Tuple that represents key, e.g `(field: "id", "012345")`. If start key is specified, scan will start from item with that key. Defaults to `nil`.
+    ///   - startKey: Dictionary that represents primary key, e.g `["id" : "012345"]`. If start key is specified, scan will start from item with that key. Defaults to `nil`.
     ///   - filterExpression: A string that contains conditions that DynamoDB applies after the query operation, but before the items are returned to you. Items that do not satisfy criteria are not returned.
     ///   - limit: Limit number of items returned by query. Defaults to nil.
     ///   - consistentRead: If your application requires a strongly consistent read, set this parameter to 'true'. Defaults to `false`.
@@ -285,7 +285,7 @@ public struct AwsDynamoDBTable {
     ///   - success: Bool value that will be `true` if request has succeeded, otherwise false.
     ///   - items: Items returned from DynamoDB or `nil` if request has failed. Items must conform to `Codable` protocol.
     ///   - error: Error if request has failed or `nil` if request has succeeded.
-    public func scan<T: Decodable>(indexName: String? = nil, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : Any]? = nil, fetchAttributes: [String] = [], startKey: (field :String, value: Any)? = nil, filterExpression: String? = nil, limit: Int? = nil, consistentRead: Bool = false, completion: @escaping (Bool, [T]?, Error?) -> Void) {
+    public func scan<T: Decodable>(indexName: String? = nil, expressionAttributeNames: [String : String]? = nil, expressionAttributeValues: [String : Any]? = nil, fetchAttributes: [String] = [], startKey: [String : Any]? = nil, filterExpression: String? = nil, limit: Int? = nil, consistentRead: Bool = false, completion: @escaping (Bool, [T]?, Error?) -> Void) {
         var params: [String : Any] = [ "TableName" : name,
                                        "ConsistentRead" : consistentRead ]
         if let indexName = indexName {
@@ -299,7 +299,7 @@ public struct AwsDynamoDBTable {
             params["ExpressionAttributeValues"] = toAwsJson(from: expressionAttributeValues)
         }
         if let startKey = startKey{
-            params["ExclusiveStartKey"] = toAwsJson(from: [startKey.field : startKey.value])
+            params["ExclusiveStartKey"] = toAwsJson(from: startKey)
         }
         if let filterExpression = filterExpression{
             params["FilterExpression"] = filterExpression
