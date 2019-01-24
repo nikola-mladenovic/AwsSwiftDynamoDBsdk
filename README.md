@@ -44,7 +44,7 @@ let testTable = dynamoDb.table(name: "test")
 ```
 To get item from DynamoDB use the  `getItem` method of the `AwsDynamoDBTable` instance:
 ``` swift
-testTable.getItem(key: (field: "id", value: "012345"), completion: { (success, item, error) in
+testTable.getItem(key: ["id" : "012345"], completion: { (success, item, error) in
     // Do some work
     ...
 })
@@ -65,14 +65,14 @@ testTable.put(item: person, completion: { (success, error) in
 ```
 To delete item from DynamoDB use the `deleteItem` method of the `AwsDynamoDBTable` instance:
 ``` swift
-testTable.deleteItem(key: (field: "id", value: "012345"), completion: { (success, error) in
+testTable.deleteItem(key: ["id" : "012345"], completion: { (success, error) in
     // Do some work
     ...
 })
 ```
 To update item on DynamoDB use the `update` method of the `AwsDynamoDBTable` instance:
 ``` swift
-testTable.update(key: (field: "id", value: "012345"),
+testTable.update(key: ["id" : "012345"],
                  expressionAttributeValues: [":newBool" : true, ":incVal" : 3],
                  updateExpression: "SET bool=:newBool, num = num + :incVal",
                  completion: { (success, error) in
