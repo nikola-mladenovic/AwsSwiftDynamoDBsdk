@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import Dispatch
 import AwsSign
 
@@ -100,7 +103,7 @@ public struct AwsDynamoDBTable {
             if error == nil,
                 let data = data,
                 let jsonObject = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any],
-                let awsJson = jsonObject?["Item"] as? [String : Any] {
+                let awsJson = jsonObject["Item"] as? [String : Any] {
                 do {
                     let item: T = try self.deserialize(from: awsJson)
                     completion(true, item, error)
@@ -256,7 +259,7 @@ public struct AwsDynamoDBTable {
             if error == nil,
                 let data = data,
                 let jsonObject = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any],
-                let jsonItems = jsonObject?["Items"] as? [[String : Any]] {
+                let jsonItems = jsonObject["Items"] as? [[String : Any]] {
                 do {
                     let items: [T] = try jsonItems.map { return try self.deserialize(from: $0) }
                     completion(true, items, error)
@@ -323,7 +326,7 @@ public struct AwsDynamoDBTable {
             if error == nil,
                 let data = data,
                 let jsonObject = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any],
-                let jsonItems = jsonObject?["Items"] as? [[String : Any]] {
+                let jsonItems = jsonObject["Items"] as? [[String : Any]] {
                 do {
                     let items: [T] = try jsonItems.map { return try self.deserialize(from: $0) }
                     completion(true, items, error)
