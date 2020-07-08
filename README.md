@@ -7,7 +7,7 @@ AwsDynamoDB is a Swift library that enables you to use Amazon DynamoDB  with Swi
 <img src="https://travis-ci.org/nikola-mladenovic/AwsSwiftDynamoDBsdk.svg?branch=master">
 </a>
 <a href="https://developer.apple.com/swift/" target="_blank">
-<img src="https://img.shields.io/badge/Swift-5.1-orange.svg?style=flat" alt="Swift 5.1">
+<img src="https://img.shields.io/badge/Swift-5.2-orange.svg?style=flat" alt="Swift 5.2">
 </a>
 <a href="https://developer.apple.com/swift/" target="_blank">
 <img src="https://img.shields.io/badge/Platforms-iOS%20%7C%20macOS%20%7C%20watchOS%20%7C%20tvOS%20%7C%20Linux-4E4E4E.svg?colorA=EF5138" alt="Platforms iOS | macOS | watchOS | tvOS | Linux">
@@ -24,7 +24,7 @@ This package builds with Swift Package Manager. Ensure you have installed and ac
 To use AwsSns, modify the Package.swift file and add following dependency:
 
 ``` swift
-.package(url: "https://github.com/nikola-mladenovic/AwsSwiftDynamoDBsdk", from: "0.3.0")
+.package(url: "https://github.com/nikola-mladenovic/AwsSwiftDynamoDBsdk", from: "0.4.0")
 ```
 
 Then import the `AwsDynamoDB` library into the swift source code:

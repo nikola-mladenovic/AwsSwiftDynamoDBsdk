@@ -23,7 +23,7 @@ class AwsDynamoDBTest: XCTestCase {
     
     func testGetItem() {
         let getItemExpectation = expectation(description: "getItemAsyncCall")
-        testTable?.getItem(key: (field: "id", value: "Test"), completion: { (success, item: Item?, error) in
+        testTable?.getItem(keyParams: ["id": "Test", "name": "Marek Sokol"], completion: { (success, item: Item?, error) in
             XCTAssert(success, "Request failed")
             XCTAssertNil(error, "Error should be nil")
             XCTAssertNotNil(item, "Item should not be nil")
@@ -57,7 +57,7 @@ class AwsDynamoDBTest: XCTestCase {
         
         testTable?.put(item: item, completion: { (rSuccess, rError) in
             if rSuccess {
-                self.testTable?.deleteItem(key: (field: "id", value: "Test2"), completion: { (rSuccess, rError) in
+                self.testTable?.deleteItem(keyParams: ["id": item.id, "name": item.name], completion: { (rSuccess, rError) in
                     error = rError
                     success = rSuccess
                     deleteItemExpectation.fulfill()
@@ -76,11 +76,11 @@ class AwsDynamoDBTest: XCTestCase {
         let item = Item(id: "TestUpdateItem", name: "Update Item", bool: false, num: 2)
         let testUpdateItemExpectation = expectation(description: "testUpdateItem")
         
-        let key: (String, Any) = (field: "id", value: "TestUpdateItem")
-        testTable?.deleteItem(key: key, completion: { _, _ in
+        let keyParams = ["id": item.id, "name": item.name]
+        testTable?.deleteItem(keyParams: keyParams, completion: { _, _ in
             self.testTable?.put(item: item, completion: { _, _ in
-                self.testTable?.update(key: key, expressionAttributeValues: [":newBool" : true, ":incVal" : 3], updateExpression: "SET bool=:newBool, num = num + :incVal", completion: { success, error in
-                    self.testTable?.getItem(key: key, completion: { (_, item: Item?, _) in
+                self.testTable?.update(keyParams: keyParams, expressionAttributeValues: [":newBool" : true, ":incVal" : 3], updateExpression: "SET bool=:newBool, num = num + :incVal", completion: { success, error in
+                    self.testTable?.getItem(keyParams: keyParams, completion: { (_, item: Item?, _) in
                         XCTAssert(success, "Request failed")
                         XCTAssertNil(error, "Error should be nil")
                         XCTAssert(item?.bool == true, "Bool not updated")
